@@ -9,9 +9,12 @@ import matplotlib.pyplot as plt
 
 #class Vision_model():
     #def __init__(self):
-        #pass
+        #initialize DETR model global variables
+        
 
-    #def 
+    #def resnet
+    
+    #def ViT
 
 
 class Actor(nn.Module):
@@ -25,7 +28,7 @@ class Actor(nn.Module):
         self.fc4 = tfl.layers.Linear(num_input_dim=state_size, units=hidden_layer)
         self.fc5 = tfl.layers.Linear(num_input_dim=state_size, units=hidden_layer)
         self.fc6 = tfl.layers.Linear(num_input_dim=state_size, units=action_size)
-    
+        self.batch_norm = tf.keras.layers.BatchNormalization(axis=1)(state_size)
            
     def forward(self, states):
         if states.dim() == 1:
@@ -57,7 +60,7 @@ class Critic(nn.Module):
         self.fc5 = tfl.layers.Linear(num_input_dim=hidden_layer, units=hidden_layer2)
         self.fc6 = tfl.layers.Linear(num_input_dim=hidden_layer, units=action_size)
         
-        self.batch_norm = nn.BatchNorm1d(state_size)
+        self.batch_norm = tf.keras.layers.BatchNormalization(axis=1)(state_size)
         
     
     def forward(self, states):
