@@ -7,14 +7,14 @@ from tensorflow.keras.layers import Activations
 import matplotlib.pyplot as plt
 
 
-#class Vision_model():
+#class DETR_model():
     #def __init__(self):
         #initialize DETR model global variables
         
 
-    #def resnet
+    #def CNN
     
-    #def ViT
+    #def transformer
 
 
 class Actor(nn.Module):
