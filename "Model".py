@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
     
     #def transformer
 
-
+@torch.jit.script
 class Actor(nn.Module):
     
     def __init__(self, state_size, action_size, hidden_layer, hidden2_layer, seed):
@@ -46,7 +46,7 @@ class Actor(nn.Module):
         
         return self.fc6(x)
     
-    
+@torch.jit.script    
 class Critic(nn.Module):
     def __init__(self, state_size, action_size, hidden_layer, hidden2_layer, seed):
         
