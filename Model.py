@@ -1,16 +1,10 @@
 import torch
-from torch import nn
-import numpy as np
-import torch
 import torch.nn as nn
 import torch.autograd as autograd
 import torch.optim as optim
-import numpy as np
 import torch.nn.functional as F
-import matplotlib.pyplot as plt
 import torchvison
 from torchvision import transforms, utils, models
-from torch import optim as optim
 
 class Actor(nn.Module):
             """
