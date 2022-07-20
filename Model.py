@@ -33,7 +33,7 @@ class Actor(nn.Module):
         """
 
     def __init__(self, d_model, nhead, num_encoder_layers, num_decoder_layers, dropout,
-                dim_feedforward, hidden_layer, input_channels=3,output_channels=3, kernel_size=1):
+                dim_feedforward, hidden_layer, input_channels,output_channels, kernel_size):
 
         super().__init__()
         self.conv = nn.Conv2d(input_channels,output_channels, kernel_size)
@@ -70,17 +70,14 @@ class Actor(nn.Module):
     
     
 class Critic(nn.Module):
-    def __init__(self, state_size, action_size, hidden_layer, hidden2_layer, seed):
         
-        
-    def __init__(self, d_model: int, nhead: int, num_encoder_layers: int, num_decoder_layers: int, dropout: float32,
-                dim_feedforward: int, hidden_layer: int, input_channels: int,output_channels: int, kernel_size: int, params: callable, betas: float64, eps: float64, lr: float64, wd: float64):
-
-        """
+            """
         - Params:
                 - same as actor
 
-        """
+        """    
+    def __init__(self, d_model: int, nhead: int, num_encoder_layers: int, num_decoder_layers: int, dropout: float32,
+                dim_feedforward: int, hidden_layer: int, input_channels: int,output_channels: int, kernel_size: int, params: callable, betas: float64, eps: float64, lr: float64, wd: float64):
 
         super().__init__()
         self.conv = nn.Conv2d(input_channels,output_channels, kernel_size)
@@ -97,8 +94,6 @@ class Critic(nn.Module):
 
 
     def forward(self, img: torch.Tensor):
-        """TO-DO: Feed forward function for the transformer
-        Params = conv_output - input tensor to forward propogate through the model"""
 
         conv_output = self.conv(img)
         flattened_img = conv_output.flatten(0,-1)
