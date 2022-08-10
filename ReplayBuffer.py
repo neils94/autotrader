@@ -1,4 +1,3 @@
-"Replay Buffer"
 
 class ReplayBuffer():
     def __init__(self, buffer_size, batch_size):
