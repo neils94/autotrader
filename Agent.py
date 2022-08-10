@@ -1,5 +1,3 @@
-"Agent"
-
 from collections import namedtuple, deque
 import random
 import tensorflow as tf
