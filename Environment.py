@@ -9,18 +9,6 @@ import json
 
 #trade_result = retrieve the last single trade from API
 
-def screenshot():
-    screenshot_taken = pyautogui.screenshot()
-    return screenshot_taken
-
-def preprocess(screenshot):
-    grayscale = transforms.functional.to_grayscale(screenshot)
-    resized_img = transforms.functional.resize(grayscale, [84,135])
-    cropped_img = transforms.functional.crop(resized_img, 0,0,84,84)
-    tensor_img = transforms.functional.to_tensor(cropped_img).permute(0,2,1)
-    return tensor_img
-
-
 class environment():
     """
     TO-DO LIST:
@@ -49,6 +37,19 @@ class environment():
         self.action = action
         self.state = state
         self.headers = {"Authorization": "Bearer 9d0b7ba6935a259276e4c4940e18c219-b2952fcc87ddd20980fc12b2c371786d", "Content-Type": "application/json", "Accept-Datetime-Format": "RFC3339"}
+        
+        
+    def screenshot():
+        screenshot_taken = pyautogui.screenshot()
+        return screenshot_taken
+
+    def preprocess(screenshot):
+        grayscale = transforms.functional.to_grayscale(screenshot)
+        resized_img = transforms.functional.resize(grayscale, [84,135])
+        cropped_img = transforms.functional.crop(resized_img, 0,0,84,84)
+        tensor_img = transforms.functional.to_tensor(cropped_img).permute(0,2,1)
+        return tensor_img
+
 
     def enter_trade(self, units: str, pair: str):
         #longs are in positive units and shorts are in negative units
