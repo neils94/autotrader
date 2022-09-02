@@ -1,12 +1,28 @@
-from asyncio.windows_events import NULL
-import torch 
 from torchvision import transforms
 import requests
 import pyautogui
 import json
 import numpy as np
 import time
+import math
+import numpy as np
+import sys
 
+
+class Unbuffered(object):
+   def __init__(self, stream):
+       self.stream = stream
+   def write(self, data):
+       self.stream.write(data)
+       self.stream.flush()
+   def writelines(self, datas):
+       self.stream.writelines(datas)
+       self.stream.flush()
+   def __getattr__(self, attr):
+       return getattr(self.stream, attr)
+
+
+sys.stdout = Unbuffered(sys.stdout)
 
 #state, action, reward, next_state, open, close = experiences
 
@@ -41,7 +57,7 @@ class environment():
         #longs are in positive units and shorts are in negative units
         data = {
         "order": {
-            "units": units,
+            "units": f"{units}",
             "instrument": pair,        
             "timeInForce": "FOK",
             "type": "MARKET",
@@ -67,6 +83,8 @@ class environment():
         data = json.dumps(data)
         close = requests.put('https://api-fxpractice.oanda.com/v3/accounts/101-001-21526871-001/positions/USD_JPY/close', headers=self.headers, data=data)
 
+
+
         return close
 
     def get_balance(self):
@@ -75,41 +93,30 @@ class environment():
         balance = account['account']['balance']
 
         return balance
-    
-    def open_close_info(self):
-        open_trades = requests.get("https://api-fxtrade.oanda.com/v3/accounts/101-001-21526871-001/openTrades", headers=self.headers)
-        open_trades = open_trades.json()
 
-        if open_trades["trades"][0]:
-            closed = False
-
-        else:
-            closed = True
-        
-        return closed
-
-
-
-    def open_trades(self, trade_type: str):
+    def open_trades(self):
         #trade_type = long or short
-        open_trades = requests.get("https://api-fxpractice.oanda.com/v3/accounts/101-001-21526871-001/openPositions", headers=self.headers)
+        open_trades = requests.get("https://api-fxpractice.oanda.com/v3/accounts/101-001-21526871-001/openTrades", headers=self.headers)
         open_trades = open_trades.json()
         #detect if position is long or short
-        pl = open_trades['positions'][0][trade_type]['pl']
+        pl = open_trades['trades'][0]['unrealizedPL']
+
+        assert pl != 0.0000, f"Expected profit or loss, got {pl}"
         
         return pl
 
-    def calculate_reward(self, trade_result, close, trade_type):
+    def calculate_reward(self, trade_result: float, close:bool):
+        trade_result = float(trade_result)
+        balance = float(self.get_balance())
         if close == True:
             if trade_result > 0:
-                reward = torch.log(trade_result)
+                reward = (trade_result/balance) * 10
             else:
-                reward = -(torch.log(trade_result))
+                reward = (trade_result/balance) * 10
         else:
-            open_trade = environment.open_trades(trade_type)
-            reward = open_trade * 1e-6
-            #set break conditions  
-
+            open_trade = self.open_trades()
+            reward = float(open_trade) * 1e-2
+        
         return reward
 
     def screenshot(self):
@@ -124,42 +131,44 @@ class environment():
         return state
 
     def step(self, action_probs, action):
-
         leverage = 50
-        account_balance = environment.get_balance()
-        max_position_sizing =  (account_balance * leverage)
-        units  = (max_position_sizing * 0.05) * action_probs 
-        rewards = []
-        reward = 0
+        account_balance = self.get_balance()
+        account_balance = float(account_balance)
+        max_position_sizing =  account_balance * leverage
+        lot_sizing = math.floor(max_position_sizing * 0.05 * action_probs)
+        rewards_list = []
         next_states = []
+        closed = []
+        temp_rewards = []
+        reward = 0
+        temp_reward = 0
 
         if action == 0:
-            units = -(units)
-            units = str(units)
-            entry = environment.enter_trade(units, pair="USD_JPY")
-            open_trade = environment.open_trades('short')
-            if open_trade > 0:
-                while True:
-                    time.sleep(60 - time.gmtime()[5] % 60)
-                    screenshot = environment.screenshot() 
-                    next_state = environment.preprocess(screenshot)
-                    reward += (open_trade * 1e-2)
-                    rewards.append(reward)
-                    next_states.append(next_state)
-                    break;
-            else:
-                reward -= (open_trade * 1e-2)
-                rewards.append(reward)
+            units = -lot_sizing
+            self.enter_trade(units=units, pair="USD_JPY")
+        elif action == 1:
+            self.enter_trade(units=lot_sizing, pair="USD_JPY")
+        while ((action == 0) or (action==1)):
+            time.sleep(60 - time.gmtime()[5] % 58)
+            temp_reward = self.calculate_reward(trade_result=0.000, close=False)
+            temp_rewards.append(temp_reward)
+            if len(temp_rewards) >= 3:
+                if temp_rewards[-3] - temp_rewards[-1] > 0:
+                    self.close_trade("shortUnits" if action == 0 else "longUnits")
+                    break
+        screenshot = self.screenshot() 
+        next_state = self.preprocess(screenshot)
+        next_states.append(next_state)
+        close = 1
+        closed.append(close)
+        trade_result = self.get_trade_result()
+        reward = self.calculate_reward(trade_result=trade_result, close=True)
+        rewards_list.append(reward)
+        rewards = np.array(rewards_list, order='C')
+        
+        return rewards, next_states, closed
 
-
-
-        else:
-            units = units
-            units = str(units)
-            entry = environment.enter_trade(units, pair="USD_JPY")
-            while True:
-                    screenshot = environment.screenshot() 
-                    next_state = environment.preprocess(screenshot)
-                    open_trade = environment.open_trades('long')
 
 env = environment(state=1,action=1)
+
+rewards, next_states, closed = env.step(action_probs=0.73, action=1)
