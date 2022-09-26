@@ -28,7 +28,7 @@ sys.stdout = Unbuffered(sys.stdout)
 
 #trade_result = retrieve the last single trade from API
 
-
+oanda_header = {"Authorization": "Bearer 9d0b7ba6935a259276e4c4940e18c219-b2952fcc87ddd20980fc12b2c371786d", "Content-Type": "application/json", "Accept-Datetime-Format": "RFC3339"}
 class environment():
     """
     TO-DO LIST:
@@ -47,10 +47,7 @@ class environment():
     Design Questions:
     - what is the trades exit condition?
     """
-
-    def __init__(self, state, action: int):
-        self.action = action
-        self.state = state
+    def __init__(self):
         self.headers = {"Authorization": "Bearer 9d0b7ba6935a259276e4c4940e18c219-b2952fcc87ddd20980fc12b2c371786d", "Content-Type": "application/json", "Accept-Datetime-Format": "RFC3339"}
 
     def enter_trade(self, units: str, pair: str):
@@ -72,6 +69,7 @@ class environment():
     def get_trade_result(self):
         params = {'state': 'CLOSED', 'count': int(1)}
         trade_result = requests.get('https://api-fxpractice.oanda.com/v3/accounts/101-001-21526871-001/trades', params=params, headers=self.headers)
+        print(trade_result)
         trade_result = trade_result.json()
         trade_result = trade_result["trades"][0]["realizedPL"]
 
@@ -105,14 +103,14 @@ class environment():
         
         return pl
 
-    def calculate_reward(self, trade_result: float, close:bool):
+    def calculate_reward(self, trade_result, close:bool):
         trade_result = float(trade_result)
         balance = float(self.get_balance())
         if close == True:
             if trade_result > 0:
-                reward = (trade_result/balance) * 10
+                reward = (trade_result/balance) * 100
             else:
-                reward = (trade_result/balance) * 10
+                reward = (trade_result/balance) * 100
         else:
             open_trade = self.open_trades()
             reward = float(open_trade) * 1e-2
@@ -135,19 +133,20 @@ class environment():
         account_balance = self.get_balance()
         account_balance = float(account_balance)
         max_position_sizing =  account_balance * leverage
-        lot_sizing = math.floor(max_position_sizing * 0.05 * action_probs)
+        lot_sizing = math.floor(max_position_sizing * 0.05 * action_probs.float())
         rewards_list = []
-        next_states = []
-        closed = []
         temp_rewards = []
         reward = 0
         temp_reward = 0
+        action = action.float()
 
         if action == 0:
             units = -lot_sizing
             self.enter_trade(units=units, pair="USD_JPY")
         elif action == 1:
             self.enter_trade(units=lot_sizing, pair="USD_JPY")
+        elif action == 2:
+            pass
         while ((action == 0) or (action==1)):
             time.sleep(60 - time.gmtime()[5] % 58)
             temp_reward = self.calculate_reward(trade_result=0.000, close=False)
@@ -158,17 +157,10 @@ class environment():
                     break
         screenshot = self.screenshot() 
         next_state = self.preprocess(screenshot)
-        next_states.append(next_state)
         close = 1
-        closed.append(close)
         trade_result = self.get_trade_result()
         reward = self.calculate_reward(trade_result=trade_result, close=True)
         rewards_list.append(reward)
         rewards = np.array(rewards_list, order='C')
         
-        return rewards, next_states, closed
-
-
-env = environment(state=1,action=1)
-
-rewards, next_states, closed = env.step(action_probs=0.73, action=1)
+        return rewards, next_state, close
