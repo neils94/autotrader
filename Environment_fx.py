@@ -1,124 +1,86 @@
 from torchvision import transforms
-import requests
-import pyautogui
-import json
-import numpy as np
 import time
-import math
 import numpy as np
-import sys
+import pyautogui
+import requests
+import json
+import torch
 
+token = 'eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI0ZmVjZjE4YmY5N2IwYWYwZjIyNGY1ZTAzYjhhNTcyNiIsInBlcm1pc3Npb25zIjpbXSwidG9rZW5JZCI6IjIwMjEwMjEzIiwiaW1wZXJzb25hdGVkIjpmYWxzZSwiaWF0IjoxNjczNTcxMzYzLCJyZWFsVXNlcklkIjoiNGZlY2YxOGJmOTdiMGFmMGYyMjRmNWUwM2I4YTU3MjYifQ.VBvrp1uW4GgFPBHzu5rx-izktAccznZAU6yp_uSt1QBMCm-N3_-DAt31OPqV83eg0SU4hxJ3fnnujDNONTXysgXl6RH734ilISRqE7FNMDpZseEpeu6wImwADmvJN1YxSEZM2kSeKAC7fPdeIY_JW2fAYRH2U7SFVOJbhDW7C5P348gYZpYpjCddzaTDjeyywbQw7uJdnnVZaM7dpOyhPJAbTjnAX9xQ5gq-sPMXpIUwdzY97F3sSEefxyVkPp70dK6fjQhsuut6oemNBHuVE-z8_7BSnCgjqw7Sedx5fDpjjaG-giFkTHhjDJtvT0DHv3FswMiZ5Flu-u61KczAnXnrmzXj0QJHwXcJuvL7YdOmtWP6YHa-P3ojF6ZtFsgs8pShDTctkV4GTH19e4fL7rWQTFDwWJt9sDc-ECePpW_1eFRuXIk_8FHhxcZbT_yhNOy8FlEoFEDSFu1tKKhSstvoFl_IbFkP1yt8tuwxgq7Zh5ztAS9ljFjiMvs-_CwVPNsEfVktmphz_R2QpVTMk58FFKSiqeYEuyGdSD-EzCvJMyD-tlTRPpjqygHn2GUqlRpAuS6FUO5a2iG9A7HYUdry1CSFLr_QT_Rqi_ZASgWx0AeNJbzjURIrEMk_rdHUCQlim__3LuM9KaIORo5ju8LzmWRzqXXD7n1Nco2OtDo'
 
-class Unbuffered(object):
-   def __init__(self, stream):
-       self.stream = stream
-   def write(self, data):
-       self.stream.write(data)
-       self.stream.flush()
-   def writelines(self, datas):
-       self.stream.writelines(datas)
-       self.stream.flush()
-   def __getattr__(self, attr):
-       return getattr(self.stream, attr)
-
-
-sys.stdout = Unbuffered(sys.stdout)
-
-#state, action, reward, next_state, open, close = experiences
-
-#trade_result = retrieve the last single trade from API
-
-oanda_header = {"Authorization": "Bearer 9d0b7ba6935a259276e4c4940e18c219-b2952fcc87ddd20980fc12b2c371786d", "Content-Type": "application/json", "Accept-Datetime-Format": "RFC3339"}
-class environment():
-    """
-    TO-DO LIST:
-    - create a vectorized state space to store as 'state'
-    - rewards will be distributed during open trades and after closing trades
-    """
-    """
-
-    Properly working functions:
-    -enter trade
-    -close trade
-    -get balance
-    -open trades
-    -get trade result
-
-    Design Questions:
-    - what is the trades exit condition?
-    """
+class meta_env():
     def __init__(self):
-        self.headers = {"Authorization": "Bearer 9d0b7ba6935a259276e4c4940e18c219-b2952fcc87ddd20980fc12b2c371786d", "Content-Type": "application/json", "Accept-Datetime-Format": "RFC3339"}
+        self.header = {"Content-Type": "application/json", "Accept": "application/json", "auth-token": "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI0ZmVjZjE4YmY5N2IwYWYwZjIyNGY1ZTAzYjhhNTcyNiIsInBlcm1pc3Npb25zIjpbXSwidG9rZW5JZCI6IjIwMjEwMjEzIiwiaW1wZXJzb25hdGVkIjpmYWxzZSwiaWF0IjoxNjczNTcxMzYzLCJyZWFsVXNlcklkIjoiNGZlY2YxOGJmOTdiMGFmMGYyMjRmNWUwM2I4YTU3MjYifQ.VBvrp1uW4GgFPBHzu5rx-izktAccznZAU6yp_uSt1QBMCm-N3_-DAt31OPqV83eg0SU4hxJ3fnnujDNONTXysgXl6RH734ilISRqE7FNMDpZseEpeu6wImwADmvJN1YxSEZM2kSeKAC7fPdeIY_JW2fAYRH2U7SFVOJbhDW7C5P348gYZpYpjCddzaTDjeyywbQw7uJdnnVZaM7dpOyhPJAbTjnAX9xQ5gq-sPMXpIUwdzY97F3sSEefxyVkPp70dK6fjQhsuut6oemNBHuVE-z8_7BSnCgjqw7Sedx5fDpjjaG-giFkTHhjDJtvT0DHv3FswMiZ5Flu-u61KczAnXnrmzXj0QJHwXcJuvL7YdOmtWP6YHa-P3ojF6ZtFsgs8pShDTctkV4GTH19e4fL7rWQTFDwWJt9sDc-ECePpW_1eFRuXIk_8FHhxcZbT_yhNOy8FlEoFEDSFu1tKKhSstvoFl_IbFkP1yt8tuwxgq7Zh5ztAS9ljFjiMvs-_CwVPNsEfVktmphz_R2QpVTMk58FFKSiqeYEuyGdSD-EzCvJMyD-tlTRPpjqygHn2GUqlRpAuS6FUO5a2iG9A7HYUdry1CSFLr_QT_Rqi_ZASgWx0AeNJbzjURIrEMk_rdHUCQlim__3LuM9KaIORo5ju8LzmWRzqXXD7n1Nco2OtDo"}
+        self.params =  {"accountId": "ff1d0714-5768-4ce1-ab38-d1aacfbc5c8b"}
+    def account_info(self):
+        acc_info  = requests.get('https://mt-client-api-v1.vint-hill.agiliumtrade.ai/users/current/accounts/ff1d0714-5768-4ce1-ab38-d1aacfbc5c8b/account-information', params = self.params,headers= self.header)
+        #acc_info = acc_info.json()
 
-    def enter_trade(self, units: str, pair: str):
-        #longs are in positive units and shorts are in negative units
+        return acc_info
+    
+    def get_balance(self):
+        acc_info  = requests.get('https://mt-client-api-v1.vint-hill.agiliumtrade.ai/users/current/accounts/ff1d0714-5768-4ce1-ab38-d1aacfbc5c8b/account-information', params =self.params,headers= self.header)
+        balance = acc_info.json()['balance']
+
+
+        return balance
+    
+    def time():
+        time = requests.get('https://mt-client-api-v1.vint-hill.agiliumtrade.ai/users/current/accounts/865d3a4d-3803-486d-bdf3-a85679d9fad2/server-time')
+        time = time.json()
+
+    def enter_trade(self, symbol: str, volume: float, action):
         data = {
-        "order": {
-            "units": f"{units}",
-            "instrument": pair,        
-            "timeInForce": "FOK",
-            "type": "MARKET",
-            "positionFill": "DEFAULT"
+            "symbol": symbol,
+            "actionType": action,
+            "volume": volume,
             }
-        }
         data = json.dumps(data)
-        enter_trade = requests.post("https://api-fxpractice.oanda.com/v3/accounts/101-001-21526871-001/orders", headers=self.headers, data=data)
+        enter_trade = requests.post("https://mt-client-api-v1.vint-hill.agiliumtrade.ai/users/current/accounts/ff1d0714-5768-4ce1-ab38-d1aacfbc5c8b/trade", headers=self.header, data = data)
 
-        return enter_trade
+        print(enter_trade.text)
 
-    def get_trade_result(self):
-        params = {'state': 'CLOSED', 'count': int(1)}
-        trade_result = requests.get('https://api-fxpractice.oanda.com/v3/accounts/101-001-21526871-001/trades', params=params, headers=self.headers)
-        print(trade_result)
-        trade_result = trade_result.json()
-        trade_result = trade_result["trades"][0]["realizedPL"]
+    def get_open_trades(self):
+        open_trades = requests.get("https://mt-client-api-v1.vint-hill.agiliumtrade.ai/users/current/accounts/ff1d0714-5768-4ce1-ab38-d1aacfbc5c8b/positions", params = self.params, headers = self.header)
+        open_trades = open_trades.json()[0]
+        
+        return open_trades
+
+    def close_position(self):
+        position_id = self.get_open_trades()['id']
+        data = {"actionType": "POSITION_CLOSE_ID", "positionId": position_id}
+        data = json.dumps(data)
+        close = requests.post("https://mt-client-api-v1.vint-hill.agiliumtrade.ai/users/current/accounts/ff1d0714-5768-4ce1-ab38-d1aacfbc5c8b/trade", headers=self.header, data= data)
+
+        return close, position_id
+
+    def trade_result(self, position_id):
+        trade_result = requests.get('https://mt-client-api-v1.vint-hill.agiliumtrade.ai/users/current/accounts/ff1d0714-5768-4ce1-ab38-d1aacfbc5c8b/history-deals/position/'+position_id, params= self.params, headers=self.header)
+        trade_result = trade_result.json()[1]['profit']
 
         return trade_result
 
-    def close_trade(self, trade_type: str):
-        #longUnits or shortUnits depending one which open position
-        data={trade_type: "ALL"}
-        data = json.dumps(data)
-        close = requests.put('https://api-fxpractice.oanda.com/v3/accounts/101-001-21526871-001/positions/USD_JPY/close', headers=self.headers, data=data)
+    def acc(self, position_id):
+        result = requests.get('https://mt-client-api-v1.vint-hill.agiliumtrade.ai/users/current/accounts/ff1d0714-5768-4ce1-ab38-d1aacfbc5c8b/history-orders/position/'+position_id,params= self.params, headers=self.header)
+        result = result.json()
 
-
-
-        return close
-
-    def get_balance(self):
-        account_summary = requests.get("https://api-fxpractice.oanda.com/v3/accounts/101-001-21526871-001/summary", headers=self.headers)
-        account = account_summary.json()
-        balance = account['account']['balance']
-
-        return balance
-
-    def open_trades(self):
-        #trade_type = long or short
-        open_trades = requests.get("https://api-fxpractice.oanda.com/v3/accounts/101-001-21526871-001/openTrades", headers=self.headers)
-        open_trades = open_trades.json()
-        #detect if position is long or short
-        pl = open_trades['trades'][0]['unrealizedPL']
-
-        assert pl != 0.0000, f"Expected profit or loss, got {pl}"
-        
-        return pl
+        return result
 
     def calculate_reward(self, trade_result, close:bool):
         trade_result = float(trade_result)
         balance = float(self.get_balance())
         if close == True:
-            if trade_result > 0:
-                reward = (trade_result/balance) * 100
-            else:
-                reward = (trade_result/balance) * 100
+            reward = (trade_result/balance) * 100
         else:
-            open_trade = self.open_trades()
-            reward = float(open_trade) * 1e-2
+            open_trade = self.get_open_trades()['unrealizedProfit']
+            reward = (open_trade/balance) * 100
         
         return reward
 
     def screenshot(self):
+        
         screenshot_taken = pyautogui.screenshot()
+        screenshot_taken = screenshot_taken.convert('RGB')
         return screenshot_taken
 
     def preprocess(self, screenshot):
@@ -128,39 +90,45 @@ class environment():
         state = transforms.functional.to_tensor(cropped_img).permute(0,2,1)
         return state
 
+    def stacked_frames(self):
+        stacks = []
+        for i in range(4):
+            state = self.screenshot()
+            state = self.preprocess(state)
+            stacks.append(state)
+
+        state = torch.stack(stacks,dim=1)
+        state = torch.squeeze(state)
+
+        return state
+
     def step(self, action_probs, action):
-        leverage = 50
-        account_balance = self.get_balance()
-        account_balance = float(account_balance)
+        leverage = 500
+        account_balance = float(self.get_balance())
         max_position_sizing =  account_balance * leverage
-        lot_sizing = math.floor(max_position_sizing * 0.05 * action_probs.float())
+        lot_sizing= (max_position_sizing * 0.05 * float(action_probs))/int(100000)
         rewards_list = []
         temp_rewards = []
-        reward = 0
-        temp_reward = 0
-        action = action.float()
+        action = int(action)
 
         if action == 0:
-            units = -lot_sizing
-            self.enter_trade(units=units, pair="USD_JPY")
+            self.enter_trade( "GBPUSD", lot_sizing, "ORDER_TYPE_BUY") 
         elif action == 1:
-            self.enter_trade(units=lot_sizing, pair="USD_JPY")
-        elif action == 2:
-            pass
+            self.enter_trade("GBPUSD", lot_sizing, "ORDER_TYPE_SELL")
         while ((action == 0) or (action==1)):
-            time.sleep(60 - time.gmtime()[5] % 58)
+            time.sleep(60 - time.gmtime()[5] % 60)
             temp_reward = self.calculate_reward(trade_result=0.000, close=False)
             temp_rewards.append(temp_reward)
-            if len(temp_rewards) >= 3:
+            if len(temp_rewards) >= 4:
                 if temp_rewards[-3] - temp_rewards[-1] > 0:
-                    self.close_trade("shortUnits" if action == 0 else "longUnits")
+                    close, position_id = self.close_position()
                     break
-        screenshot = self.screenshot() 
-        next_state = self.preprocess(screenshot)
-        close = 1
-        trade_result = self.get_trade_result()
-        reward = self.calculate_reward(trade_result=trade_result, close=True)
+        trade_results = self.trade_result(position_id)
+        reward = self.calculate_reward(trade_result=trade_results, close=True)
         rewards_list.append(reward)
-        rewards = np.array(rewards_list, order='C')
+        rewards = np.asarray(rewards_list, dtype=float, order='C')
+        screenshot = self.screenshot()
+        time.sleep(59)
+        next_state = self.preprocess(screenshot)
         
-        return rewards, next_state, close
+        return rewards, next_state
